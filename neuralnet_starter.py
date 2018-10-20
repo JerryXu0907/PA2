@@ -26,6 +26,13 @@ def load_data(fname):
   Write code to read the data and return it as 2 numpy arrays.
   Make sure to convert labels to one hot encoded format.
   """
+  data = pickle.load(open(fname, "rb"))
+
+  images = data[:, :-1]
+  y = data[:, -1].astype(int)
+  labels = np.zeros((y.shape[0], 10))
+  labels[np.arange(y.shape[0]), y] = 1
+
   return images, labels
 
 
@@ -61,6 +68,7 @@ class Activation:
     Write the code for sigmoid activation function that takes in a numpy array and returns a numpy array.
     """
     self.x = x
+    output = 1 / (1 + np.exp(-x))
     return output
 
   def tanh(self, x):
@@ -68,32 +76,33 @@ class Activation:
     Write the code for tanh activation function that takes in a numpy array and returns a numpy array.
     """
     self.x = x
-    return output
+    return np.tanh(x)
 
   def ReLU(self, x):
     """
     Write the code for ReLU activation function that takes in a numpy array and returns a numpy array.
     """
     self.x = x
+    output = (x > 0) * x
     return output
 
   def grad_sigmoid(self):
     """
     Write the code for gradient through sigmoid activation function that takes in a numpy array and returns a numpy array.
     """
-    return grad
+    return sigmoid(self.x) * (1 - sigmoid(self.x))
 
   def grad_tanh(self):
     """
     Write the code for gradient through tanh activation function that takes in a numpy array and returns a numpy array.
     """
-    return grad
+    return 1 - tanh(self.x) ** 2
 
   def grad_ReLU(self):
     """
     Write the code for gradient through ReLU activation function that takes in a numpy array and returns a numpy array.
     """
-    return grad
+    return (self.x >= 0)
 
 
 class Layer():
@@ -159,7 +168,6 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   Write the code to train the network. Use values from config to set parameters
   such as L2 penalty, number of epochs, momentum, etc.
   """
-  
   
 def test(model, X_test, y_test, config):
   """
