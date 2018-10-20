@@ -155,10 +155,7 @@ class Neuralnetwork():
     self.x = x
     self.y = x
     for i in self.layers:
-      if type(i).__name__ == 'Activation':
-        self.y = i.forward_pass(self.y)
-      else:
-        self.y = i.forward_pass(self.y)
+      self.y = i.forward_pass(self.y)
     if targets == None:
       loss = None
     else:
