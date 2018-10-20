@@ -39,7 +39,8 @@ def load_data(fname):
 class Activation:
   def __init__(self, activation_type = "sigmoid"):
     self.activation_type = activation_type
-    self.x = None # Save the input 'x' for sigmoid or tanh or ReLU to this variable since it will be used later for computing gradients.
+    self.x = None
+    # Save the input 'x' for sigmoid or tanh or ReLU to this variable since it will be used later for computing gradients.
   
   def forward_pass(self, a):
     if self.activation_type == "sigmoid":
@@ -90,13 +91,13 @@ class Activation:
     """
     Write the code for gradient through sigmoid activation function that takes in a numpy array and returns a numpy array.
     """
-    return sigmoid(self.x) * (1 - sigmoid(self.x))
+    return self.sigmoid(self.x) * (1 - self.sigmoid(self.x))
 
   def grad_tanh(self):
     """
     Write the code for gradient through tanh activation function that takes in a numpy array and returns a numpy array.
     """
-    return 1 - tanh(self.x) ** 2
+    return 1 - self.tanh(self.x) ** 2
 
   def grad_ReLU(self):
     """
@@ -121,6 +122,7 @@ class Layer():
     Write the code for forward pass through a layer. Do not apply activation function here.
     """
     self.x = x
+    self.a = np.multiply(self.w, self.x) + self.b
     return self.a
   
   def backward_pass(self, delta):
@@ -128,6 +130,9 @@ class Layer():
     Write the code for backward pass. This takes in gradient from its next layer as input,
     computes gradient for its weights and the delta to pass to its previous layers.
     """
+    self.d_w = self.w * delta
+    self.d_b = self.b * delta
+    self.d_x =
     return self.d_x
 
       
@@ -148,12 +153,25 @@ class Neuralnetwork():
     If targets == None, loss should be None. If not, then return the loss computed.
     """
     self.x = x
+    self.y = x
+    for i in self.layers:
+      if type(i).__name__ == 'Activation':
+        self.y = i.forward_pass(self.y)
+      else:
+        self.y = i.forward_pass(self.y)
+    if targets == None:
+      loss = None
+    else:
+      loss = self.loss_func(self.y, targets)
     return loss, self.y
 
   def loss_func(self, logits, targets):
     '''
     find cross entropy loss between logits and targets
     '''
+    output = 0
+    for i in range(len(logits)):
+      output = output - targets[i] * np.log(logits[i])
     return output
     
   def backward_pass(self):
