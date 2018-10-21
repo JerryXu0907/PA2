@@ -197,6 +197,8 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
 
   batch_num = 0
   v = 0 # Momentum. 
+  val_loss_inc = 0
+  last_loss_valid = None
   for i in xrange(config['epochs']):
     batch_X = X_train[batch_num : batch_num + config['batch_size']]
     batch_y = y_train[batch_num : batch_num + config['batch_size']]
@@ -238,15 +240,24 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
         layer.w += lr * dw
         layer.b += lr * layer.d_b
 
-    # Early stop. 
-    # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
-    # Config properties associated with early stop:
-    #   config['early_stop'] = True  # Implement early stopping or not
-    #   config['early_stop_epoch'] = 5  # Number of epochs for which validation loss increases to be counted as overfitting
-
     # Validation loss. 
     loss_valid, _ = nn.forward_pass(X_valid, y_valid)
-  
+
+    # Early stop. 
+    if config['early_stop']:
+      if last_loss_valid == None:
+        last_loss_valid = loss_valid
+        continue
+
+      if loss_valid >= last_loss_valid:
+        val_loss_inc += 1
+      else:
+        val_loss_inc = 1
+        
+      last_loss_valid = loss_valid
+      if val_loss_inc >= config['early_stop_epoch']:
+        break
+    
 def test(model, X_test, y_test, config):
   """
   Write code to run the model on the data passed as input and return accuracy.
