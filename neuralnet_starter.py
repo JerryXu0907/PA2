@@ -251,6 +251,11 @@ def test(model, X_test, y_test, config):
   """
   Write code to run the model on the data passed as input and return accuracy.
   """
+
+  loss, y_out = nn.forward_pass(X_test, y_test)
+  y_out = np.argmax(y_out, axis=1)[:, np.newaxis]
+  accuracy = np.sum((y_out == y_test) * 1) / y_test.shape[0]
+
   return accuracy
       
 
