@@ -18,7 +18,9 @@ def softmax(x):
   """
   Write the code for softmax activation function that takes in a numpy array and returns a numpy array.
   """
-  return output
+  probs = np.exp(x - np.max(x, axis=1, keepdims=True))
+  probs /= np.sum(probs, axis=1, keepdims=True)
+  return probs
 
 
 def load_data(fname):
@@ -130,9 +132,9 @@ class Layer():
     Write the code for backward pass. This takes in gradient from its next layer as input,
     computes gradient for its weights and the delta to pass to its previous layers.
     """
-    self.d_w = self.w * delta
-    self.d_b = self.b * delta
-    self.d_x =
+    self.d_w = self.x * delta # dy/dw = x
+    self.d_b = delta # dy/db = 1
+    self.d_x = self.w * delta # dy/dx = w
     return self.d_x
 
       
@@ -145,17 +147,20 @@ class Neuralnetwork():
     for i in range(len(config['layer_specs']) - 1):
       self.layers.append( Layer(config['layer_specs'][i], config['layer_specs'][i+1]) )
       if i < len(config['layer_specs']) - 2:
-        self.layers.append(Activation(config['activation']))  
+        self.layers.append(Activation(config['activation']))
     
   def forward_pass(self, x, targets=None):
     """
     Write the code for forward pass through all layers of the model and return loss and predictions.
     If targets == None, loss should be None. If not, then return the loss computed.
     """
+    self.targets = targets
     self.x = x
     self.y = x
     for i in self.layers:
       self.y = i.forward_pass(self.y)
+    self.y = softmax(self.y) # softmax at last to calculate distributions. 
+
     if targets == None:
       loss = None
     else:
@@ -166,9 +171,7 @@ class Neuralnetwork():
     '''
     find cross entropy loss between logits and targets
     '''
-    output = 0
-    for i in range(len(logits)):
-      output = output - targets[i] * np.log(logits[i])
+    output = -np.sum(targets * np.log(logits)) / logits.shape[0]
     return output
     
   def backward_pass(self):
@@ -176,6 +179,13 @@ class Neuralnetwork():
     implement the backward pass for the whole network. 
     hint - use previously built functions.
     '''
+    if self.targets == None:
+      return
+
+    delta = (self.y - self.targets) / self.y.shape[0]
+    for layer in self.layer:
+      delta = layer.backward_pass(delta)
+    
       
 
 def trainer(model, X_train, y_train, X_valid, y_valid, config):
@@ -183,6 +193,59 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   Write the code to train the network. Use values from config to set parameters
   such as L2 penalty, number of epochs, momentum, etc.
   """
+  nn = Neuralnetwork(config)
+
+  batch_num = 0
+  v = 0 # Momentum. 
+  for i in xrange(config['epochs']):
+    batch_X = X_train[batch_num : batch_num + config['batch_size']]
+    batch_y = y_train[batch_num : batch_num + config['batch_size']]
+    batch_num += config['batch_size']
+
+    # Forward pass. 
+    loss, y_out = nn.forward_pass(batch_X, batch_y)
+    # L2 Reg. 
+    l2 = 0
+    for (layer in nn.layers):
+      l2 += np.sum(np.square(layer.w))
+    l2 *= 0.5 * config['L2_penalty'] / batch_X.shape[0]
+    loss += l2
+
+    # Backprop. 
+    nn.backward_pass()
+
+    # Update. 
+    lr = config['learning_rate']
+    for layer in nn.layers:
+      # Add l2 for dw. 
+      dw = layer.d_w + config['L2_penalty'] * layer.w
+
+      # Update rules. 
+      if config['momentum']:
+        # Momentum update
+        gamma = config['momentum_gamma']
+        if layer.v == None:
+          layer.v = np.zeros_like(layer.w)
+
+        # w
+        layer.v = gamma * layer.v - lr * dw
+        layer.w += v
+
+        # b
+        layer.b += lr * layer.d_b
+      else:
+        # Vanilla update
+        layer.w += lr * dw
+        layer.b += lr * layer.d_b
+
+    # Early stop. 
+    # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+    # Config properties associated with early stop:
+    #   config['early_stop'] = True  # Implement early stopping or not
+    #   config['early_stop_epoch'] = 5  # Number of epochs for which validation loss increases to be counted as overfitting
+
+    # Validation loss. 
+    loss_valid, _ = nn.forward_pass(X_valid, y_valid)
   
 def test(model, X_test, y_test, config):
   """
