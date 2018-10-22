@@ -196,6 +196,7 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   nn = Neuralnetwork(config)
 
   batch_num = 0
+  epoch_num = 0
   v = 0 # Momentum. 
   val_loss_inc = 0
   last_loss_valid = None
@@ -208,7 +209,7 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
     loss, y_out = nn.forward_pass(batch_X, batch_y)
     # L2 Reg. 
     l2 = 0
-    for (layer in nn.layers):
+    for layer in nn.layers:
       l2 += np.sum(np.square(layer.w))
     l2 *= 0.5 * config['L2_penalty'] / batch_X.shape[0]
     loss += l2
@@ -240,23 +241,30 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
         layer.w += lr * dw
         layer.b += lr * layer.d_b
 
-    # Validation loss. 
-    loss_valid, _ = nn.forward_pass(X_valid, y_valid)
+    if batch_num >= (epoch_num + 1) * X_train.shape[0]:
+      # An epoch has reached, get val loss, check early stop. 
+      epoch_num += 1
 
-    # Early stop. 
-    if config['early_stop']:
-      if last_loss_valid == None:
+      # Validation loss. 
+      loss_valid, _ = nn.forward_pass(X_valid, y_valid)
+
+      # Early stop. 
+      if config['early_stop']:
+        # First time the val loss is being calculated. 
+        if last_loss_valid == None:
+          last_loss_valid = loss_valid
+          continue
+
+        if loss_valid >= last_loss_valid:
+          val_loss_inc += 1
+        else:
+          val_loss_inc = 0
+          
         last_loss_valid = loss_valid
-        continue
-
-      if loss_valid >= last_loss_valid:
-        val_loss_inc += 1
-      else:
-        val_loss_inc = 1
-        
-      last_loss_valid = loss_valid
-      if val_loss_inc >= config['early_stop_epoch']:
-        break
+        if val_loss_inc >= config['early_stop_epoch']:
+          # val loss has increased enough such that it's considered as 
+          # overfitting, stop training. 
+          break
     
 def test(model, X_test, y_test, config):
   """
@@ -283,3 +291,5 @@ if __name__ == "__main__":
   trainer(model, X_train, y_train, X_valid, y_valid, config)
   test_acc = test(model, X_test, y_test, config)
 
+  # Gradient check. 
+  
