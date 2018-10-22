@@ -124,7 +124,7 @@ class Layer():
     Write the code for forward pass through a layer. Do not apply activation function here.
     """
     self.x = x
-    self.a = np.multiply(self.w, self.x) + self.b
+    self.a = np.dot(self.x, self.w) + self.b
     return self.a
   
   def backward_pass(self, delta):
@@ -132,9 +132,14 @@ class Layer():
     Write the code for backward pass. This takes in gradient from its next layer as input,
     computes gradient for its weights and the delta to pass to its previous layers.
     """
-    self.d_w = self.x * delta # dy/dw = x
+    self.d_w = np.dot(self.x.T, delta) # dy/dw = x
+    # debug message
+    print('x', self.x.shape)
     self.d_b = delta # dy/db = 1
-    self.d_x = self.w * delta # dy/dx = w
+    # debug message
+    print(self.d_b.shape)
+    self.d_x = np.dot(self.w, delta) # dy/dx = w
+    #TODO: Something wrong with the dimension of the matrix, still figuring it out.
     return self.d_x
 
       
@@ -161,7 +166,7 @@ class Neuralnetwork():
       self.y = i.forward_pass(self.y)
     self.y = softmax(self.y) # softmax at last to calculate distributions. 
 
-    if targets == None:
+    if targets.any() == None:
       loss = None
     else:
       loss = self.loss_func(self.y, targets)
@@ -179,12 +184,12 @@ class Neuralnetwork():
     implement the backward pass for the whole network. 
     hint - use previously built functions.
     '''
-    if self.targets == None:
+    if self.targets.any() == None:
       return
 
     delta = (self.y - self.targets) / self.y.shape[0]
-    for layer in self.layer:
-      delta = layer.backward_pass(delta)
+    for i in range(len(self.layers)-1, -1, -1):
+      delta = self.layers[i].backward_pass(delta)
     
       
 
@@ -200,7 +205,7 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   v = 0 # Momentum. 
   val_loss_inc = 0
   last_loss_valid = None
-  for i in xrange(config['epochs']):
+  for i in range(config['epochs']):
     batch_X = X_train[batch_num : batch_num + config['batch_size']]
     batch_y = y_train[batch_num : batch_num + config['batch_size']]
     batch_num += config['batch_size']
@@ -210,7 +215,8 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
     # L2 Reg. 
     l2 = 0
     for layer in nn.layers:
-      l2 += np.sum(np.square(layer.w))
+      if type(layer) == 'Layer':
+        l2 += np.sum(np.square(layer.w))
     l2 *= 0.5 * config['L2_penalty'] / batch_X.shape[0]
     loss += l2
 
@@ -271,7 +277,7 @@ def test(model, X_test, y_test, config):
   Write code to run the model on the data passed as input and return accuracy.
   """
 
-  loss, y_out = nn.forward_pass(X_test, y_test)
+  loss, y_out = model.forward_pass(X_test, y_test)
   y_out = np.argmax(y_out, axis=1)[:, np.newaxis]
   accuracy = np.sum((y_out == y_test) * 1) / y_test.shape[0]
 
@@ -279,9 +285,9 @@ def test(model, X_test, y_test, config):
       
 
 if __name__ == "__main__":
-  train_data_fname = 'MNIST_train.pkl'
-  valid_data_fname = 'MNIST_valid.pkl'
-  test_data_fname = 'MNIST_test.pkl'
+  train_data_fname = 'data/MNIST_train.pkl'
+  valid_data_fname = 'data/MNIST_valid.pkl'
+  test_data_fname = 'data/MNIST_test.pkl'
   
   ### Train the network ###
   model = Neuralnetwork(config)
