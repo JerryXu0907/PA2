@@ -9,10 +9,10 @@ config['batch_size'] = 1000  # Number of training samples per batch to be passed
 config['epochs'] = 50  # Number of epochs to train the model
 config['early_stop'] = True  # Implement early stopping or not
 config['early_stop_epoch'] = 5  # Number of epochs for which validation loss increases to be counted as overfitting
-config['L2_penalty'] = 0  # Regularization constant
+config['L2_penalty'] = 10  # Regularization constant
 config['momentum'] = False  # Denotes if momentum is to be applied or not
 config['momentum_gamma'] = 0.9  # Denotes the constant 'gamma' in momentum expression
-config['learning_rate'] = 0.0001 # Learning rate of gradient descent algorithm
+config['learning_rate'] = 0.001 # Learning rate of gradient descent algorithm
 
 def softmax(x):
   """
@@ -182,7 +182,7 @@ class Neuralnetwork():
     '''
     find cross entropy loss between logits and targets
     '''
-    output = -np.sum(targets * np.log(logits)) / logits.shape[0]
+    output = -np.sum(targets * np.log(logits + 0.00001))# / logits.shape[0]
     return output
     
   def backward_pass(self):
@@ -193,7 +193,7 @@ class Neuralnetwork():
     if self.targets.any() == None:
       return
 
-    delta = (self.y - self.targets) / self.y.shape[0]
+    delta = (self.targets - self.y) #/ self.y.shape[0]
     for i in range(len(self.layers)-1, -1, -1):
       delta = self.layers[i].backward_pass(delta)
     
@@ -204,81 +204,50 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   Write the code to train the network. Use values from config to set parameters
   such as L2 penalty, number of epochs, momentum, etc.
   """
-  nn = Neuralnetwork(config)
-
-  batch_num = 0
-  epoch_num = 0
-  v = 0 # Momentum. 
+  batch_size = config['batch_size']
+  lr = config['learning_rate']
+  penalty = config['L2_penalty']
+  momentum = 0 # Momentum.
   val_loss_inc = 0
   last_loss_valid = None
   for i in range(config['epochs']):
-    batch_X = X_train[batch_num : batch_num + config['batch_size']]
-    batch_y = y_train[batch_num : batch_num + config['batch_size']]
-    batch_num += config['batch_size']
+    for t in range(int(X_train.shape[0]/batch_size)):
+      batch_X = X_train[t * batch_size: (t+1)*batch_size]
+      batch_Y = y_train[t * batch_size: (t + 1) * batch_size]
 
-    # Forward pass. 
-    loss, y_out = nn.forward_pass(batch_X, batch_y)
-    # L2 Reg. 
-    l2 = 0
-    for layer in nn.layers:
-      if type(layer) == 'Layer':
-        l2 += np.sum(np.square(layer.w))
-    l2 *= 0.5 * config['L2_penalty'] / batch_X.shape[0]
-    loss += l2
+      model.forward_pass(batch_X, batch_Y)
+      model.backward_pass()
+      templayer = Layer(1,1)
+      for layer in model.layers:
+        if type(layer) == type(templayer):
+          if config['momentum']:
+            # Momentum update
+            gamma = config['momentum_gamma']
+            if momentum == None:
+              momentum = np.zeros_like(layer.w)
 
-    # Backprop. 
-    nn.backward_pass()
+            # w
+            d_w = gamma * momentum + layer.d_w * lr
+            layer.w = layer.w * (1 - lr * penalty/batch_size) + d_w
+            momentum = d_w
 
-    # Update. 
-    lr = config['learning_rate']
-    for layer in nn.layers:
-      if type(layer) == 'Layer':
-        # Add l2 for dw.
-        dw = layer.d_w + config['L2_penalty'] * layer.w
+            # b
+            layer.b = layer.b * (1 - lr * penalty/batch_size) + layer.d_b * lr
+          else:
+            layer.w = layer.w * (1 - lr * penalty/batch_size) + layer.d_w * lr
+            layer.b = layer.b * (1 - lr * penalty/batch_size) + layer.d_b * lr
+    loss_valid, _ = model.forward_pass(X_valid,y_valid)
+    print('loss for validation is', loss_valid)
+    if last_loss_valid == None:
+      last_loss_valid = loss_valid
+    else:
+      if last_loss_valid < loss_valid:
+        val_loss_inc += 1
+      else:
+        val_loss_inc = 0
+    if val_loss_inc >= config['early_stop_epoch']:
+      break
 
-        # Update rules.
-        if config['momentum']:
-          # Momentum update
-          gamma = config['momentum_gamma']
-          if layer.v == None:
-            layer.v = np.zeros_like(layer.w)
-
-          # w
-          layer.v = gamma * layer.v - lr * dw
-          layer.w += v
-
-          # b
-          layer.b += lr * layer.d_b
-        else:
-          # Vanilla update
-          layer.w += lr * dw
-          layer.b += lr * layer.d_b
-
-    if batch_num >= (epoch_num + 1) * X_train.shape[0]:
-      # An epoch has reached, get val loss, check early stop. 
-      epoch_num += 1
-
-      # Validation loss. 
-      loss_valid, _ = nn.forward_pass(X_valid, y_valid)
-
-      # Early stop. 
-      if config['early_stop']:
-        # First time the val loss is being calculated. 
-        if last_loss_valid == None:
-          last_loss_valid = loss_valid
-          continue
-
-        if loss_valid >= last_loss_valid:
-          val_loss_inc += 1
-        else:
-          val_loss_inc = 0
-          
-        last_loss_valid = loss_valid
-        if val_loss_inc >= config['early_stop_epoch']:
-          # val loss has increased enough such that it's considered as 
-          # overfitting, stop training. 
-          break
-    
 def test(model, X_test, y_test, config):
   """
   Write code to run the model on the data passed as input and return accuracy.
@@ -286,15 +255,19 @@ def test(model, X_test, y_test, config):
 
   loss, y_out = model.forward_pass(X_test, y_test)
   y_out = np.argmax(y_out, axis=1)[:, np.newaxis]
-  accuracy = np.sum((y_out == y_test) * 1) / y_test.shape[0]
+  sum = 0
+  for i in range(len(y_out)):
+    if y_test[i][y_out[i, 0]] == 1:
+      sum += 1
+  accuracy = sum/len(y_out)
 
   return accuracy
       
 
 if __name__ == "__main__":
-  train_data_fname = 'data/MNIST_train.pkl'
-  valid_data_fname = 'data/MNIST_valid.pkl'
-  test_data_fname = 'data/MNIST_test.pkl'
+  train_data_fname = 'MNIST_train.pkl'
+  valid_data_fname = 'MNIST_valid.pkl'
+  test_data_fname = 'MNIST_test.pkl'
   
   ### Train the network ###
   model = Neuralnetwork(config)
@@ -303,6 +276,6 @@ if __name__ == "__main__":
   X_test, y_test = load_data(test_data_fname)
   trainer(model, X_train, y_train, X_valid, y_valid, config)
   test_acc = test(model, X_test, y_test, config)
-  # print(test_acc)
+  print(test_acc)
   # Gradient check. 
   
