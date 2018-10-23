@@ -132,14 +132,20 @@ class Layer():
     Write the code for backward pass. This takes in gradient from its next layer as input,
     computes gradient for its weights and the delta to pass to its previous layers.
     """
-    self.d_w = np.dot(self.x.T, delta) # dy/dw = x
+    self.d_w = np.dot(self.x.T, delta)  # dy/dw = x
     # debug message
-    print('x', self.x.shape)
-    self.d_b = delta # dy/db = 1
+    # print('x', self.x.shape)
+    # print('d_w', self.d_w.shape)
+
+    self.d_b = delta.sum(axis=0)  # dy/db = 1
     # debug message
-    print(self.d_b.shape)
-    self.d_x = np.dot(self.w, delta) # dy/dx = w
-    #TODO: Something wrong with the dimension of the matrix, still figuring it out.
+    # print('d_b', self.d_b.shape)
+    # print('b', self.b.shape)
+
+    self.d_x = np.dot(delta, self.w.T)  # dy/dx = w
+    # debug message
+    # print('w', self.w.shape)
+
     return self.d_x
 
       
@@ -226,26 +232,27 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
     # Update. 
     lr = config['learning_rate']
     for layer in nn.layers:
-      # Add l2 for dw. 
-      dw = layer.d_w + config['L2_penalty'] * layer.w
+      if type(layer) == 'Layer':
+        # Add l2 for dw.
+        dw = layer.d_w + config['L2_penalty'] * layer.w
 
-      # Update rules. 
-      if config['momentum']:
-        # Momentum update
-        gamma = config['momentum_gamma']
-        if layer.v == None:
-          layer.v = np.zeros_like(layer.w)
+        # Update rules.
+        if config['momentum']:
+          # Momentum update
+          gamma = config['momentum_gamma']
+          if layer.v == None:
+            layer.v = np.zeros_like(layer.w)
 
-        # w
-        layer.v = gamma * layer.v - lr * dw
-        layer.w += v
+          # w
+          layer.v = gamma * layer.v - lr * dw
+          layer.w += v
 
-        # b
-        layer.b += lr * layer.d_b
-      else:
-        # Vanilla update
-        layer.w += lr * dw
-        layer.b += lr * layer.d_b
+          # b
+          layer.b += lr * layer.d_b
+        else:
+          # Vanilla update
+          layer.w += lr * dw
+          layer.b += lr * layer.d_b
 
     if batch_num >= (epoch_num + 1) * X_train.shape[0]:
       # An epoch has reached, get val loss, check early stop. 
@@ -296,6 +303,6 @@ if __name__ == "__main__":
   X_test, y_test = load_data(test_data_fname)
   trainer(model, X_train, y_train, X_valid, y_valid, config)
   test_acc = test(model, X_test, y_test, config)
-
+  # print(test_acc)
   # Gradient check. 
   
