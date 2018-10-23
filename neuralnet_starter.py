@@ -6,10 +6,10 @@ config = {}
 config['layer_specs'] = [784, 100, 100, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
 config['activation'] = 'sigmoid' # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
 config['batch_size'] = 1000  # Number of training samples per batch to be passed to network
-config['epochs'] = 50  # Number of epochs to train the model
+config['epochs'] = 150  # Number of epochs to train the model
 config['early_stop'] = True  # Implement early stopping or not
 config['early_stop_epoch'] = 5  # Number of epochs for which validation loss increases to be counted as overfitting
-config['L2_penalty'] = 10  # Regularization constant
+config['L2_penalty'] = 0  # Regularization constant
 config['momentum'] = True  # Denotes if momentum is to be applied or not
 config['momentum_gamma'] = 0.9  # Denotes the constant 'gamma' in momentum expression
 config['learning_rate'] = 0.001 # Learning rate of gradient descent algorithm
@@ -52,7 +52,7 @@ class Activation:
       return self.tanh(a)
     
     elif self.activation_type == "ReLU":
-      return self.relu(a)
+      return self.ReLU(a)
   
   def backward_pass(self, delta):
     if self.activation_type == "sigmoid":
@@ -210,6 +210,11 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   momentum = 0 # Momentum.
   val_loss_inc = 0
   last_loss_valid = None
+  saved_weights = []
+  saved_biases = []
+  best_epoch = 0
+  train_acc = []
+  test_acc = []
   for i in range(config['epochs']):
     for t in range(int(X_train.shape[0]/batch_size)):
       batch_X = X_train[t * batch_size: (t+1)*batch_size]
@@ -226,6 +231,11 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
             if not hasattr(layer, 'v'):
               layer.v = np.zeros_like(layer.w)
 
+            ################ TODO TODO TODO TODO TODO TODO
+            # Regularization implementation could be wrong. 
+            # Regularization is supposed to be small like 0.001 or 0.0001
+            # Not sure what (1 - lr * penalty / batch_size) is doing
+
             # w
             d_w = gamma * layer.v + layer.d_w * lr
             layer.w = layer.w * (1 - lr * penalty/batch_size) + d_w
@@ -237,8 +247,14 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
             layer.w = layer.w * (1 - lr * penalty/batch_size) + layer.d_w * lr
             layer.b = layer.d_b * lr
     loss_valid, _ = model.forward_pass(X_valid,y_valid)
-    print('epoch:', i, 'train loss:', loss_train, 'valid loss:', loss_valid)
+
+    # Store training and testing accuracy for each epoch. 
+    train_acc.append(test(model, X_train, y_train, config))
+    test_acc.append(test(model, X_test, y_test, config))
+    #print('epoch:', i, 'train loss:', loss_train, 'valid loss:', loss_valid)
     
+
+
     if last_loss_valid == None:
       last_loss_valid = loss_valid
     else:
@@ -246,9 +262,30 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
         val_loss_inc += 1
       else:
         val_loss_inc = 0
+        
+        # Save the network with best val loss. 
+        saved_weights = []
+        saved_biases = []
+        for layer in model.layers:
+          if not hasattr(layer, 'w'):
+            continue
+          
+          # The saved weights and biases should simply be weights and biases for each layers. 
+          # The number of layers should match the length of saved_weights and saved_biases. 
+          # The saved_weights[0] is for the first layer, [1] is for the second layer, and so on. 
+          # The same for saved_biases. 
+          saved_weights.append(np.copy(layer.w))
+          saved_biases.append(np.copy(layer.b))
+        best_epoch = i
+
       last_loss_valid = loss_valid
       if val_loss_inc >= config['early_stop_epoch']:
         break
+  model.saved_weights = saved_weights
+  model.saved_biases = saved_biases
+  model.best_epoch = best_epoch
+  model.train_acc = train_acc
+  model.test_acc = test_acc
 
 def test(model, X_test, y_test, config):
   """
@@ -276,8 +313,140 @@ if __name__ == "__main__":
   X_train, y_train = load_data(train_data_fname)
   X_valid, y_valid = load_data(valid_data_fname)
   X_test, y_test = load_data(test_data_fname)
+  #trainer(model, X_train, y_train, X_valid, y_valid, config)
+  #test_acc = test(model, X_test, y_test, config)
+  #print(test_acc)
+
+
+
+
+
+
+  #############################################################################
+  #################################### Question 3, Part c #####################
+  #############################################################################
+  # Use 10-fold cross validation to find the best epoch number. 
+  cross_val_idx = np.split(np.arange(X_train.shape[0]), 10)
+  best_epoches = []
+  best_weights = []
+  best_biases = []
+  print("## Epoch Data start:")
+  for i in range(10):
+    # Generate one fold of holdout. 
+    X_holdout = X_train[cross_val_idx[i]]
+    y_holdout = y_train[cross_val_idx[i]]
+
+    # Generate one fold of train data. 
+    train_idx = np.delete(np.arange(X_train.shape[0]), cross_val_idx[i])
+    X = X_train[train_idx]
+    y = y_train[train_idx]
+    
+    # Train the model with given data. 
+    model = Neuralnetwork(config)
+    trainer(model, X, y, X_holdout, y_holdout, config)
+    test_acc = test(model, X_test, y_test, config)
+
+    # Store results and weights. 
+    best_epoches.append(model.best_epoch)
+    best_weights.append(model.saved_weights)
+    best_biases.append(model.saved_biases)
+
+    ###### Make table with this data ######
+    # Need to report a table with 10 numbers of epochs where the weights were best. 
+    print("best epoch:", model.best_epoch, "test acc:", test_acc)
+  print("## Epoch Data stop")
+  
+  ########################### The final network. 
+  # Use the average of these epoches to train the whole dataset. 
+  epoch_avg = sum(best_epoches) / len(best_epoches)
+  config["epochs"] = epoch_avg
+
+  print("## Average epoch data:", epoch_avg)
+
+  model = Neuralnetwork(config)
+  X_train, y_train = load_data(train_data_fname)
+  X_valid, y_valid = load_data(valid_data_fname)
+  X_test, y_test = load_data(test_data_fname)
   trainer(model, X_train, y_train, X_valid, y_valid, config)
   test_acc = test(model, X_test, y_test, config)
-  print(test_acc)
+  print("test acc:", test_acc)
+
+  ############## Plot with this data ##############
+  # Need to describe training procedure AND
+  # plot training and testing accuracy vs. number of training epochs of SGD. 
+  # This plot only needed for the final network. 
+  print("## Train accuracies start:")
+  print(model.train_acc)
+  print("## Train accuracies end")
+  print("## Test accuracies start:")
+  print(model.test_acc)
+  print("## Test accuracies end")
+
+
+
+
+
+
+  #############################################################################
+  ########################### Question 3, Part d ##############################
+  #############################################################################
+  config["epochs"] = config["epochs"] * 1.1
+
+  regs_exp = [1e-3, 1e-4]
+  for reg in regs_exp:
+    config["L2_penalty"] = reg
+    model = Neuralnetwork(config)
+    X_train, y_train = load_data(train_data_fname)
+    X_valid, y_valid = load_data(valid_data_fname)
+    X_test, y_test = load_data(test_data_fname)
+    trainer(model, X_train, y_train, X_valid, y_valid, config)
+    test_acc = test(model, X_test, y_test, config)
+
+    ############## Plot with this data ##############
+    # Need to report training and testing accuracy vs. number of epoches of SGD
+    print("Model trained with l2 reg of", reg)
+    print("test acc:", test_acc)
+    print("## Train accuracies start:")
+    print(model.train_acc)
+    print("## Train accuracies end")
+    print("## Test accuracies start:")
+    print(model.test_acc)
+    print("## Test accuracies end")
+
+
+
+
+
+
+  #############################################################################
+  ########################### Question 3, Part e ##############################
+  #############################################################################
+  activations_exp = ["sigmoid", "ReLU"]
+  for activation in activations_exp:
+    config["activation"] = activation
+    model = Neuralnetwork(config)
+    X_train, y_train = load_data(train_data_fname)
+    X_valid, y_valid = load_data(valid_data_fname)
+    X_test, y_test = load_data(test_data_fname)
+    trainer(model, X_train, y_train, X_valid, y_valid, config)
+    test_acc = test(model, X_test, y_test, config)
+
+    ############## Plot with this data ##############
+    # Need to report training and testing accuracy vs. number of epoches of SGD
+    # Comment on the change of performance. 
+    print("Model trained with activation:", activation)
+    print("test acc:", test_acc)
+    print("## Train accuracies start:")
+    print(model.train_acc)
+    print("## Train accuracies end")
+    print("## Test accuracies start:")
+    print(model.test_acc)
+    print("## Test accuracies end")
+  
+  
+  # Now, the best_epoches, best_weights, and best_biases should have length 10. 
+  # Each element indicate a run of trainer with a different fold of cross validation. 
+  # Elements in best_weights and best_biases should be 
+
   # Gradient check. 
   
