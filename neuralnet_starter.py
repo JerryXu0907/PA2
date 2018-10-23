@@ -325,6 +325,7 @@ if __name__ == "__main__":
   #############################################################################
   #################################### Question 3, Part c #####################
   #############################################################################
+  print("\n\n\nQuestion 3, Part c")
   # Use 10-fold cross validation to find the best epoch number. 
   cross_val_idx = np.split(np.arange(X_train.shape[0]), 10)
   best_epoches = []
@@ -359,10 +360,11 @@ if __name__ == "__main__":
   ########################### The final network. 
   # Use the average of these epoches to train the whole dataset. 
   epoch_avg = sum(best_epoches) / len(best_epoches)
-  config["epochs"] = epoch_avg
+  config["epochs"] = int(epoch_avg)
 
   print("## Average epoch data:", epoch_avg)
 
+  print("\n## Final model")
   model = Neuralnetwork(config)
   X_train, y_train = load_data(train_data_fname)
   X_valid, y_valid = load_data(valid_data_fname)
@@ -390,7 +392,8 @@ if __name__ == "__main__":
   #############################################################################
   ########################### Question 3, Part d ##############################
   #############################################################################
-  config["epochs"] = config["epochs"] * 1.1
+  print("\n\n\nQuestion 3, Part d")
+  config["epochs"] = int(config["epochs"] * 1.1)
 
   regs_exp = [1e-3, 1e-4]
   for reg in regs_exp:
@@ -404,7 +407,7 @@ if __name__ == "__main__":
 
     ############## Plot with this data ##############
     # Need to report training and testing accuracy vs. number of epoches of SGD
-    print("Model trained with l2 reg of", reg)
+    print("\nModel trained with l2 reg of", reg)
     print("test acc:", test_acc)
     print("## Train accuracies start:")
     print(model.train_acc)
@@ -421,6 +424,7 @@ if __name__ == "__main__":
   #############################################################################
   ########################### Question 3, Part e ##############################
   #############################################################################
+  print("\n\n\nQuestion 3, Part e")
   activations_exp = ["sigmoid", "ReLU"]
   for activation in activations_exp:
     config["activation"] = activation
@@ -434,7 +438,7 @@ if __name__ == "__main__":
     ############## Plot with this data ##############
     # Need to report training and testing accuracy vs. number of epoches of SGD
     # Comment on the change of performance. 
-    print("Model trained with activation:", activation)
+    print("\nModel trained with activation:", activation)
     print("test acc:", test_acc)
     print("## Train accuracies start:")
     print(model.train_acc)
