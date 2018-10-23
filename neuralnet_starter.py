@@ -10,7 +10,7 @@ config['epochs'] = 50  # Number of epochs to train the model
 config['early_stop'] = True  # Implement early stopping or not
 config['early_stop_epoch'] = 5  # Number of epochs for which validation loss increases to be counted as overfitting
 config['L2_penalty'] = 10  # Regularization constant
-config['momentum'] = False  # Denotes if momentum is to be applied or not
+config['momentum'] = True  # Denotes if momentum is to be applied or not
 config['momentum_gamma'] = 0.9  # Denotes the constant 'gamma' in momentum expression
 config['learning_rate'] = 0.001 # Learning rate of gradient descent algorithm
 
@@ -215,7 +215,7 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
       batch_X = X_train[t * batch_size: (t+1)*batch_size]
       batch_Y = y_train[t * batch_size: (t + 1) * batch_size]
 
-      model.forward_pass(batch_X, batch_Y)
+      loss_train, _ = model.forward_pass(batch_X, batch_Y)
       model.backward_pass()
       templayer = Layer(1,1)
       for layer in model.layers:
@@ -223,21 +223,22 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
           if config['momentum']:
             # Momentum update
             gamma = config['momentum_gamma']
-            if momentum == None:
-              momentum = np.zeros_like(layer.w)
+            if not hasattr(layer, 'v'):
+              layer.v = np.zeros_like(layer.w)
 
             # w
-            d_w = gamma * momentum + layer.d_w * lr
+            d_w = gamma * layer.v + layer.d_w * lr
             layer.w = layer.w * (1 - lr * penalty/batch_size) + d_w
-            momentum = d_w
+            layer.v = d_w
 
             # b
-            layer.b = layer.b * (1 - lr * penalty/batch_size) + layer.d_b * lr
+            layer.b = layer.d_b * lr
           else:
             layer.w = layer.w * (1 - lr * penalty/batch_size) + layer.d_w * lr
-            layer.b = layer.b * (1 - lr * penalty/batch_size) + layer.d_b * lr
+            layer.b = layer.d_b * lr
     loss_valid, _ = model.forward_pass(X_valid,y_valid)
-    print('loss for validation is', loss_valid)
+    print('epoch:', i, 'train loss:', loss_train, 'valid loss:', loss_valid)
+    
     if last_loss_valid == None:
       last_loss_valid = loss_valid
     else:
@@ -245,8 +246,9 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
         val_loss_inc += 1
       else:
         val_loss_inc = 0
-    if val_loss_inc >= config['early_stop_epoch']:
-      break
+      last_loss_valid = loss_valid
+      if val_loss_inc >= config['early_stop_epoch']:
+        break
 
 def test(model, X_test, y_test, config):
   """
