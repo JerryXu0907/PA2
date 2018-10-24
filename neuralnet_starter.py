@@ -1,6 +1,6 @@
 import numpy as np
 import pickle
-
+import matplotlib.pyplot as plt
 
 config = {}
 config['layer_specs'] = [784, 100, 100, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
@@ -325,6 +325,7 @@ if __name__ == "__main__":
   #################################### Question 3, Part c #####################
   #############################################################################
   print("\n\n\nQuestion 3, Part c")
+  '''
   # Use 10-fold cross validation to find the best epoch number. 
   cross_val_idx = np.split(np.arange(X_train.shape[0]), 10)
   best_epoches = []
@@ -355,11 +356,13 @@ if __name__ == "__main__":
     # Need to report a table with 10 numbers of epochs where the weights were best. 
     print("best epoch:", model.best_epoch, "test acc:", test_acc)
   print("## Epoch Data stop")
+  '''
   
   ########################### The final network. 
   # Use the average of these epoches to train the whole dataset. 
-  epoch_avg = sum(best_epoches) / len(best_epoches)
+  epoch_avg = 81.3#sum(best_epoches) / len(best_epoches)
   config["epochs"] = int(epoch_avg)
+  config["early_stopping"] = False
 
   print("## Average epoch data:", epoch_avg)
 
@@ -376,13 +379,23 @@ if __name__ == "__main__":
   # Need to describe training procedure AND
   # plot training and testing accuracy vs. number of training epochs of SGD. 
   # This plot only needed for the final network. 
+
+  plt.plot(model.train_acc, label="train acc")
+  plt.plot(model.test_acc, label="test acc")
+  plt.title('Training and testing accuracy vs. number of training epoches')
+  plt.xlabel('number of training epochs')
+  plt.ylabel('training and testing accuracy')
+  plt.legend()
+  savefig('Q3Pc_Final Network.png', bbox_inches='tight')
+  plt.clear()
+  '''
   print("## Train accuracies start:")
   print(model.train_acc)
   print("## Train accuracies end")
   print("## Test accuracies start:")
   print(model.test_acc)
   print("## Test accuracies end")
-
+  '''
 
 
 
@@ -406,6 +419,7 @@ if __name__ == "__main__":
 
     ############## Plot with this data ##############
     # Need to report training and testing accuracy vs. number of epoches of SGD
+    '''
     print("\nModel trained with l2 reg of", reg)
     print("test acc:", test_acc)
     print("## Train accuracies start:")
@@ -414,6 +428,15 @@ if __name__ == "__main__":
     print("## Test accuracies start:")
     print(model.test_acc)
     print("## Test accuracies end")
+    '''
+    plt.plot(model.train_acc, label="train acc")
+    plt.plot(model.test_acc, label="test acc")
+    plt.title('Model with l2 reg of ${0}, training and testing accuracy vs. number of training epoches'.format(reg))
+    plt.set_xlabel('number of training epochs')
+    plt.set_ylabel('training and testing accuracy')
+    plt.legend()
+    savefig('Q3Pd_reg_${0}.png'.format(reg), bbox_inches='tight')
+    plt.clear()
 
 
 
@@ -445,6 +468,15 @@ if __name__ == "__main__":
     print("## Test accuracies start:")
     print(model.test_acc)
     print("## Test accuracies end")
+
+    plt.plot(model.train_acc, label="train acc")
+    plt.plot(model.test_acc, label="test acc")
+    plt.title('Model with activation ${0}, training and testing accuracy vs. number of training epoches'.format(activation))
+    plt.xlabel('number of training epochs')
+    plt.ylabel('training and testing accuracy')
+    plt.legend()
+    savefig('Q3Pe_reg_${0}.png'.format(activation), bbox_inches='tight')
+    plt.clear()
   
   
   # Now, the best_epoches, best_weights, and best_biases should have length 10. 
