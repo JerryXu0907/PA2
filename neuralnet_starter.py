@@ -308,11 +308,23 @@ if __name__ == "__main__":
   X_train, y_train = load_data(train_data_fname)
   X_valid, y_valid = load_data(valid_data_fname)
   X_test, y_test = load_data(test_data_fname)
-  #trainer(model, X_train, y_train, X_valid, y_valid, config)
-  #test_acc = test(model, X_test, y_test, config)
-  #print(test_acc)
+  trainer(model, X_train, y_train, X_valid, y_valid, config)
+  test_acc = test(model, X_test, y_test, config)
 
 
+test_data_fname = 'MNIST_test.pkl'
+
+X_test, y_test = load_data(test_data_fname)
+
+def solve_questions():
+  train_data_fname = 'MNIST_train.pkl'
+  valid_data_fname = 'MNIST_valid.pkl'
+  test_data_fname = 'MNIST_test.pkl'
+  
+  model = Neuralnetwork(config)
+  X_train, y_train = load_data(train_data_fname)
+  X_valid, y_valid = load_data(valid_data_fname)
+  X_test, y_test = load_data(test_data_fname)
 
   #############################################################################
   #################################### Question 3, Part c #####################
