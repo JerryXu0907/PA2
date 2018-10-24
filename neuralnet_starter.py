@@ -4,15 +4,15 @@ import pickle
 
 config = {}
 config['layer_specs'] = [784, 100, 100, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
-config['activation'] = 'sigmoid' # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
+config['activation'] = 'tanh' # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
 config['batch_size'] = 1000  # Number of training samples per batch to be passed to network
-config['epochs'] = 150  # Number of epochs to train the model
+config['epochs'] = 300  # Number of epochs to train the model
 config['early_stop'] = True  # Implement early stopping or not
-config['early_stop_epoch'] = 5  # Number of epochs for which validation loss increases to be counted as overfitting
+config['early_stop_epoch'] = 10  # Number of epochs for which validation loss increases to be counted as overfitting
 config['L2_penalty'] = 0  # Regularization constant
 config['momentum'] = True  # Denotes if momentum is to be applied or not
 config['momentum_gamma'] = 0.9  # Denotes the constant 'gamma' in momentum expression
-config['learning_rate'] = 0.001 # Learning rate of gradient descent algorithm
+config['learning_rate'] = 0.0001 # Learning rate of gradient descent algorithm
 
 def softmax(x):
   """
@@ -209,7 +209,7 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   penalty = config['L2_penalty']
   momentum = 0 # Momentum.
   val_loss_inc = 0
-  last_loss_valid = None
+  last_loss_valid = np.array([])
   saved_weights = []
   saved_biases = []
   best_epoch = 0
@@ -254,15 +254,14 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
     #print('epoch:', i, 'train loss:', loss_train, 'valid loss:', loss_valid)
     
 
-
-    if last_loss_valid == None:
-      last_loss_valid = loss_valid
+    if last_loss_valid.shape[0] == 0:
+      last_loss_valid = np.array([loss_valid])
     else:
-      if last_loss_valid < loss_valid:
-        val_loss_inc += 1
+      if np.sum((loss_valid < last_loss_valid) * 1) != last_loss_valid.shape[0]:
+        last_loss_valid = np.append(last_loss_valid, loss_valid)
       else:
-        val_loss_inc = 0
-        
+        last_loss_valid = np.array([loss_valid])
+
         # Save the network with best val loss. 
         saved_weights = []
         saved_biases = []
@@ -277,10 +276,10 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
           saved_weights.append(np.copy(layer.w))
           saved_biases.append(np.copy(layer.b))
         best_epoch = i
-
-      last_loss_valid = loss_valid
-      if val_loss_inc >= config['early_stop_epoch']:
+      
+      if last_loss_valid.shape[0] > config['early_stop_epoch']:
         break
+      
   model.saved_weights = saved_weights
   model.saved_biases = saved_biases
   model.best_epoch = best_epoch
