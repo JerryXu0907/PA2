@@ -231,11 +231,6 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
             if not hasattr(layer, 'v'):
               layer.v = np.zeros_like(layer.w)
 
-            ################ TODO TODO TODO TODO TODO TODO
-            # Regularization implementation could be wrong. 
-            # Regularization is supposed to be small like 0.001 or 0.0001
-            # Not sure what (1 - lr * penalty / batch_size) is doing
-
             # w
             d_w = gamma * layer.v + layer.d_w * lr
             layer.w = layer.w * (1 - lr * penalty/batch_size) + d_w
@@ -254,31 +249,32 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
     #print('epoch:', i, 'train loss:', loss_train, 'valid loss:', loss_valid)
     
 
-    if last_loss_valid.shape[0] == 0:
-      last_loss_valid = np.array([loss_valid])
-    else:
-      if np.sum((loss_valid < last_loss_valid) * 1) != last_loss_valid.shape[0]:
-        last_loss_valid = np.append(last_loss_valid, loss_valid)
-      else:
+    if config["early_stop"]:
+      if last_loss_valid.shape[0] == 0:
         last_loss_valid = np.array([loss_valid])
+      else:
+        if np.sum((loss_valid < last_loss_valid) * 1) != last_loss_valid.shape[0]:
+          last_loss_valid = np.append(last_loss_valid, loss_valid)
+        else:
+          last_loss_valid = np.array([loss_valid])
 
-        # Save the network with best val loss. 
-        saved_weights = []
-        saved_biases = []
-        for layer in model.layers:
-          if not hasattr(layer, 'w'):
-            continue
-          
-          # The saved weights and biases should simply be weights and biases for each layers. 
-          # The number of layers should match the length of saved_weights and saved_biases. 
-          # The saved_weights[0] is for the first layer, [1] is for the second layer, and so on. 
-          # The same for saved_biases. 
-          saved_weights.append(np.copy(layer.w))
-          saved_biases.append(np.copy(layer.b))
-        best_epoch = i
-      
-      if last_loss_valid.shape[0] > config['early_stop_epoch']:
-        break
+          # Save the network with best val loss. 
+          saved_weights = []
+          saved_biases = []
+          for layer in model.layers:
+            if not hasattr(layer, 'w'):
+              continue
+            
+            # The saved weights and biases should simply be weights and biases for each layers. 
+            # The number of layers should match the length of saved_weights and saved_biases. 
+            # The saved_weights[0] is for the first layer, [1] is for the second layer, and so on. 
+            # The same for saved_biases. 
+            saved_weights.append(np.copy(layer.w))
+            saved_biases.append(np.copy(layer.b))
+          best_epoch = i
+        
+        if last_loss_valid.shape[0] > config['early_stop_epoch']:
+          break
       
   model.saved_weights = saved_weights
   model.saved_biases = saved_biases
@@ -318,13 +314,10 @@ if __name__ == "__main__":
 
 
 
-
-
-
   #############################################################################
   #################################### Question 3, Part c #####################
   #############################################################################
-  print("\n\n\nQuestion 3, Part c")
+  print("\n\nQuestion 3, Part c")
   # Use 10-fold cross validation to find the best epoch number. 
   cross_val_idx = np.split(np.arange(X_train.shape[0]), 10)
   best_epoches = []
@@ -355,12 +348,12 @@ if __name__ == "__main__":
     # Need to report a table with 10 numbers of epochs where the weights were best. 
     print("best epoch:", model.best_epoch, "test acc:", test_acc)
   print("## Epoch Data stop")
-  
+
   ########################### The final network. 
   # Use the average of these epoches to train the whole dataset. 
   epoch_avg = sum(best_epoches) / len(best_epoches)
   config["epochs"] = int(epoch_avg)
-  config["early_stopping"] = False
+  config["early_stop"] = False
 
   print("## Average epoch data:", epoch_avg)
 
@@ -380,12 +373,13 @@ if __name__ == "__main__":
 
   plt.plot(model.train_acc, label="train acc")
   plt.plot(model.test_acc, label="test acc")
-  plt.title('Training and testing accuracy vs. number of training epoches')
+  plt.title('Final model with {0} training epochs, training and testing accuracy vs. number of training epoches'.format(int(epoch_avg)))
   plt.xlabel('number of training epochs')
   plt.ylabel('training and testing accuracy')
   plt.legend()
   plt.savefig('Q3Pc_Final Network.png', bbox_inches='tight')
   plt.clf()
+  print('Q3Pc_Final Network.png generated')
   '''
   print("## Train accuracies start:")
   print(model.train_acc)
@@ -397,12 +391,10 @@ if __name__ == "__main__":
 
 
 
-
-
   #############################################################################
   ########################### Question 3, Part d ##############################
   #############################################################################
-  print("\n\n\nQuestion 3, Part d")
+  print("\n\nQuestion 3, Part d")
   config["epochs"] = int(config["epochs"] * 1.1)
 
   regs_exp = [1e-3, 1e-4]
@@ -435,16 +427,14 @@ if __name__ == "__main__":
     plt.legend()
     plt.savefig('Q3Pd_reg_{0}.png'.format(reg), bbox_inches='tight')
     plt.clf()
-
-
-
+    print('Q3Pd_reg_{0}.png generated'.format(reg))
 
 
 
   #############################################################################
   ########################### Question 3, Part e ##############################
   #############################################################################
-  print("\n\n\nQuestion 3, Part e")
+  print("\n\nQuestion 3, Part e")
   activations_exp = ["sigmoid", "ReLU"]
   for activation in activations_exp:
     config["activation"] = activation
@@ -458,6 +448,7 @@ if __name__ == "__main__":
     ############## Plot with this data ##############
     # Need to report training and testing accuracy vs. number of epoches of SGD
     # Comment on the change of performance. 
+    '''
     print("\nModel trained with activation:", activation)
     print("test acc:", test_acc)
     print("## Train accuracies start:")
@@ -466,7 +457,8 @@ if __name__ == "__main__":
     print("## Test accuracies start:")
     print(model.test_acc)
     print("## Test accuracies end")
-
+    '''
+    
     plt.plot(model.train_acc, label="train acc")
     plt.plot(model.test_acc, label="test acc")
     plt.title('Model with activation {0}, training and testing accuracy vs. number of training epoches'.format(activation))
@@ -475,11 +467,5 @@ if __name__ == "__main__":
     plt.legend()
     plt.savefig('Q3Pe_activation_{0}.png'.format(activation), bbox_inches='tight')
     plt.clf()
-  
-  
-  # Now, the best_epoches, best_weights, and best_biases should have length 10. 
-  # Each element indicate a run of trainer with a different fold of cross validation. 
-  # Elements in best_weights and best_biases should be 
-
-  # Gradient check. 
+    print('Q3Pe_activation_{0}.png generated'.format(activation))
   
