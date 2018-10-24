@@ -3,12 +3,12 @@ import pickle
 import matplotlib.pyplot as plt
 
 config = {}
-config['layer_specs'] = [784, 100, 100, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
+config['layer_specs'] = [784, 50, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
 config['activation'] = 'tanh' # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
 config['batch_size'] = 1000  # Number of training samples per batch to be passed to network
 config['epochs'] = 300  # Number of epochs to train the model
 config['early_stop'] = True  # Implement early stopping or not
-config['early_stop_epoch'] = 10  # Number of epochs for which validation loss increases to be counted as overfitting
+config['early_stop_epoch'] = 5  # Number of epochs for which validation loss increases to be counted as overfitting
 config['L2_penalty'] = 0  # Regularization constant
 config['momentum'] = True  # Denotes if momentum is to be applied or not
 config['momentum_gamma'] = 0.9  # Denotes the constant 'gamma' in momentum expression
@@ -325,7 +325,6 @@ if __name__ == "__main__":
   #################################### Question 3, Part c #####################
   #############################################################################
   print("\n\n\nQuestion 3, Part c")
-  '''
   # Use 10-fold cross validation to find the best epoch number. 
   cross_val_idx = np.split(np.arange(X_train.shape[0]), 10)
   best_epoches = []
@@ -356,11 +355,10 @@ if __name__ == "__main__":
     # Need to report a table with 10 numbers of epochs where the weights were best. 
     print("best epoch:", model.best_epoch, "test acc:", test_acc)
   print("## Epoch Data stop")
-  '''
   
   ########################### The final network. 
   # Use the average of these epoches to train the whole dataset. 
-  epoch_avg = 81.3#sum(best_epoches) / len(best_epoches)
+  epoch_avg = sum(best_epoches) / len(best_epoches)
   config["epochs"] = int(epoch_avg)
   config["early_stopping"] = False
 
@@ -386,8 +384,8 @@ if __name__ == "__main__":
   plt.xlabel('number of training epochs')
   plt.ylabel('training and testing accuracy')
   plt.legend()
-  savefig('Q3Pc_Final Network.png', bbox_inches='tight')
-  plt.clear()
+  plt.savefig('Q3Pc_Final Network.png', bbox_inches='tight')
+  plt.clf()
   '''
   print("## Train accuracies start:")
   print(model.train_acc)
@@ -431,12 +429,12 @@ if __name__ == "__main__":
     '''
     plt.plot(model.train_acc, label="train acc")
     plt.plot(model.test_acc, label="test acc")
-    plt.title('Model with l2 reg of ${0}, training and testing accuracy vs. number of training epoches'.format(reg))
-    plt.set_xlabel('number of training epochs')
-    plt.set_ylabel('training and testing accuracy')
+    plt.title('Model with l2 reg of {0}, training and testing accuracy vs. number of training epoches'.format(reg))
+    plt.xlabel('number of training epochs')
+    plt.ylabel('training and testing accuracy')
     plt.legend()
-    savefig('Q3Pd_reg_${0}.png'.format(reg), bbox_inches='tight')
-    plt.clear()
+    plt.savefig('Q3Pd_reg_{0}.png'.format(reg), bbox_inches='tight')
+    plt.clf()
 
 
 
@@ -471,12 +469,12 @@ if __name__ == "__main__":
 
     plt.plot(model.train_acc, label="train acc")
     plt.plot(model.test_acc, label="test acc")
-    plt.title('Model with activation ${0}, training and testing accuracy vs. number of training epoches'.format(activation))
+    plt.title('Model with activation {0}, training and testing accuracy vs. number of training epoches'.format(activation))
     plt.xlabel('number of training epochs')
     plt.ylabel('training and testing accuracy')
     plt.legend()
-    savefig('Q3Pe_reg_${0}.png'.format(activation), bbox_inches='tight')
-    plt.clear()
+    plt.savefig('Q3Pe_activation_{0}.png'.format(activation), bbox_inches='tight')
+    plt.clf()
   
   
   # Now, the best_epoches, best_weights, and best_biases should have length 10. 
